@@ -1,6 +1,6 @@
 import io
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 # chardet is optional; fall back gracefully if unavailable (e.g., Streamlit Cloud)
 try:
@@ -9,8 +9,17 @@ except ModuleNotFoundError:  # pragma: no cover - environment-specific safety
     chardet = None
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
+
+try:
+    import plotly.graph_objects as go
+except ModuleNotFoundError:  # pragma: no cover - environment-specific safety
+    go = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from plotly.graph_objects import Figure
+else:
+    Figure = Any
 
 # TODO: AgGrid / DuckDB UPSERT / kaleido PNG / 大分類平均・全体平均比較 / DuPont分解 / スパークライン
 
@@ -34,6 +43,14 @@ OPTIONAL_FTE_COLUMNS = [
     "合計_正社員・正職員以外（就業時間換算人数）",
     "他社からの出向従業者（出向役員を含む）及び派遣従業者の合計",
 ]
+
+PLOTLY_INSTALL_MESSAGE = "Plotly が利用できません。`pip install plotly` または requirements.txt に Plotly を追加して再デプロイしてください。"
+
+
+def ensure_plotly_available() -> None:
+    if go is None:  # pragma: no cover - environment-specific safety
+        st.error(PLOTLY_INSTALL_MESSAGE)
+        st.stop()
 
 st.markdown(
     f"""
@@ -335,7 +352,11 @@ def safe_series_division(numerator: pd.Series, denominator: Optional[pd.Series])
     return result
 
 
-def render_time_series_chart(df: pd.DataFrame, value_columns: Dict[str, str], title: str) -> go.Figure:
+def render_time_series_chart(
+    df: pd.DataFrame, value_columns: Dict[str, str], title: str
+) -> Figure:
+    if go is None:  # pragma: no cover - handled upstream
+        raise RuntimeError("Plotly is unavailable")
     fig = go.Figure()
     for column, label in value_columns.items():
         if column not in df:
@@ -360,7 +381,9 @@ def render_time_series_chart(df: pd.DataFrame, value_columns: Dict[str, str], ti
     return fig
 
 
-def render_ratio_chart(df: pd.DataFrame, ratio_columns: Dict[str, str], title: str) -> go.Figure:
+def render_ratio_chart(df: pd.DataFrame, ratio_columns: Dict[str, str], title: str) -> Figure:
+    if go is None:  # pragma: no cover - handled upstream
+        raise RuntimeError("Plotly is unavailable")
     fig = go.Figure()
     for column, label in ratio_columns.items():
         if column not in df:
@@ -385,7 +408,7 @@ def render_ratio_chart(df: pd.DataFrame, ratio_columns: Dict[str, str], title: s
     return fig
 
 
-def render_bs_composition_chart(df: pd.DataFrame) -> Optional[go.Figure]:
+def render_bs_composition_chart(df: pd.DataFrame) -> Optional[Figure]:
     required_cols = [
         "資産（百万円）",
         "流動資産（百万円）",
@@ -418,6 +441,8 @@ def render_bs_composition_chart(df: pd.DataFrame) -> Optional[go.Figure]:
 
     composition = composition.fillna(0) * 100
 
+    if go is None:  # pragma: no cover - handled upstream
+        raise RuntimeError("Plotly is unavailable")
     fig = go.Figure()
     for column in composition.columns:
         fig.add_trace(
@@ -441,9 +466,11 @@ def render_bs_composition_chart(df: pd.DataFrame) -> Optional[go.Figure]:
     return fig
 
 
-def render_ebitda_interest_chart(df: pd.DataFrame) -> Optional[go.Figure]:
+def render_ebitda_interest_chart(df: pd.DataFrame) -> Optional[Figure]:
     if "EBITDA（百万円）" not in df and "支払利息・割引料（百万円）" not in df:
         return None
+    if go is None:  # pragma: no cover - handled upstream
+        raise RuntimeError("Plotly is unavailable")
     fig = go.Figure()
     if "EBITDA（百万円）" in df:
         fig.add_trace(
@@ -514,6 +541,7 @@ def format_table(metrics: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def main() -> None:
+    ensure_plotly_available()
     query_params = get_query_params()
 
     header_left, header_right = st.columns([3, 1])
