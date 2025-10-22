@@ -1,0 +1,8 @@
+streamlit==1.38.0
+plotly==5.24.1
+pandas==2.2.2
+numpy==1.26.4
+duckdb==1.1.2
+chardet==5.2.0
+streamlit-aggrid==0.3.5
+kaleido==0.2.1
