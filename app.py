@@ -2,7 +2,11 @@ import io
 import os
 from typing import Dict, List, Optional, Tuple
 
-import chardet
+# chardet is optional; fall back gracefully if unavailable (e.g., Streamlit Cloud)
+try:
+    import chardet
+except ModuleNotFoundError:  # pragma: no cover - environment-specific safety
+    chardet = None
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -52,10 +56,11 @@ st.markdown(
 def _detect_encoding(file_bytes: bytes) -> Optional[str]:
     if not file_bytes:
         return None
-    detection = chardet.detect(file_bytes)
-    encoding = detection.get("encoding") if detection else None
-    if encoding:
-        return encoding.lower()
+    if chardet is not None:
+        detection = chardet.detect(file_bytes)
+        encoding = detection.get("encoding") if detection else None
+        if encoding:
+            return encoding.lower()
     return None
 
 
